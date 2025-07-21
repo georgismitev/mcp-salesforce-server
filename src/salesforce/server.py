@@ -42,6 +42,8 @@ class SalesforceClient:
                     instance_url=instance_url,
                     session_id=access_token
                 )
+
+                print(f"Salesforce connection (access token, url) established succesfully.")
                 return True
             
             self.sf = Salesforce(
@@ -50,7 +52,7 @@ class SalesforceClient:
                 security_token=os.getenv('SALESFORCE_SECURITY_TOKEN')
             )
             
-            print(f"Salesforce connection established succesfully.")
+            print(f"Salesforce connection (username, password, token) established succesfully.")
             return True
         except Exception as e:
             print(f"Salesforce connection failed: {str(e)}")
