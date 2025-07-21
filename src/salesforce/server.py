@@ -7,6 +7,7 @@
 # ///
 import asyncio
 import json
+import sys
 from typing import Any, Optional
 import os
 from dotenv import load_dotenv
@@ -48,6 +49,8 @@ class SalesforceClient:
                 password=os.getenv('SALESFORCE_PASSWORD'),
                 security_token=os.getenv('SALESFORCE_SECURITY_TOKEN')
             )
+            
+            print(f"Salesforce connection established succesfully.")
             return True
         except Exception as e:
             print(f"Salesforce connection failed: {str(e)}")
@@ -92,7 +95,7 @@ sf_client = SalesforceClient()
 if not sf_client.connect():
     print("Failed to initialize Salesforce connection")
     # Optionally exit here if Salesforce is required
-    # sys.exit(1)
+    sys.exit(1)
 
 # Add tool capabilities to run SOQL queries
 @server.list_tools()
