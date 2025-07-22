@@ -51,9 +51,10 @@ class SalesforceClient:
                 security_token=os.getenv('SALESFORCE_SECURITY_TOKEN')
             )
             
-            # print(f"Salesforce connection (username, password, token) established succesfully.")
+            print(f"Salesforce connection (username, password, token) established succesfully.")
             return True
         except Exception as e:
+            print(f"Salesforce connection failed: {str(e)}")
             return False
     
     def get_object_fields(self, object_name: str) -> str:
@@ -315,7 +316,6 @@ async def handle_list_tools() -> list[types.Tool]:
 
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextContent]:
-    # No need to handle prefix stripping as we're using consistent naming
     if name == "run_soql_query":
         query = arguments.get("query")
         if not query:
@@ -479,7 +479,7 @@ async def run():
             InitializationOptions(
                 server_name="salesforce-mcp",
                 server_version="0.1.5",
-                protocol_version="2025-03-26",  # Explicitly set protocol version to match tests
+                protocol_version="2025-03-26",
                 capabilities=server.get_capabilities(
                     notification_options=NotificationOptions(),
                     experimental_capabilities={},
