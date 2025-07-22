@@ -51,7 +51,7 @@ class SalesforceClient:
                 security_token=os.getenv('SALESFORCE_SECURITY_TOKEN')
             )
             
-            print(f"Salesforce connection (username, password, token) established succesfully.")
+            # print(f"Salesforce connection (username, password, token) established succesfully.")
             return True
         except Exception as e:
             print(f"Salesforce connection failed: {str(e)}")
