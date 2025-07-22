@@ -27,9 +27,10 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV MCP_STDIO_ENABLED=true
 ENV MCP_DEBUG=true
 
-# Copy and set entrypoint script
+# Copy entrypoint and health check wrapper scripts
 COPY entrypoint.sh /app/entrypoint.sh
+COPY health_wrapper.py /app/health_wrapper.py
 RUN chmod +x /app/entrypoint.sh
 
-# Use entrypoint script to run the server
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Use health wrapper to run the server with health checks
+CMD ["python", "/app/health_wrapper.py"]

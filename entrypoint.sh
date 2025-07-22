@@ -54,6 +54,11 @@ def run_server():
         def flush(self):
             self.original_stdout.flush()
             self.original_stderr.flush()
+            
+        def fileno(self):
+            # Return the file descriptor of stdout
+            # This method is required by subprocess module
+            return self.original_stdout.fileno()
     
     # Redirect stderr to a file for logging
     log_file = open("/tmp/mcp_server.log", "a")
