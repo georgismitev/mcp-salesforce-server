@@ -240,9 +240,29 @@ def test_list_tools():
 
 def run_all_tests():
     """Run all tests in sequence"""
-    # Just run the tools list test and print the raw response
-    response = test_list_tools()
-    print(json.dumps(response, indent=2))
+    # First run the initialization test
+    print("\n=== Running Initialization Test ===\n")
+    init_result = test_initialize()
+    
+    # Then run the tools list test
+    print("\n=== Running Tools List Test ===\n")
+    tools_response = test_list_tools()
+    print(json.dumps(tools_response, indent=2))
+    
+    # Return overall success/failure
+    # init_result is already a boolean (True/False) from the test_initialize function
+    # For tools_response, we need to check if it exists and has no errors
+    tools_test_passed = tools_response and "error" not in tools_response
+    
+    return init_result and tools_test_passed
 
 if __name__ == "__main__":
-    run_all_tests()
+    print("\n=== MCP Salesforce Server Tests ===\n")
+    success = run_all_tests()
+    print("\n=== Test Results Summary ===")
+    if success:
+        print("✅ All tests passed successfully!")
+    else:
+        print("❌ Some tests failed. Please check the logs above for details.")
+    # Return appropriate exit code
+    sys.exit(0 if success else 1)
