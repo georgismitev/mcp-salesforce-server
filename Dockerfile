@@ -18,19 +18,17 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY src/ ./src/
 
 # Expose the port the MCP server will run on
-EXPOSE 8000
+EXPOSE 8080
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8000
+ENV PORT=8080
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV MCP_STDIO_ENABLED=true
 ENV MCP_DEBUG=true
 
-# Copy entrypoint and health check wrapper scripts
+# Copy entrypoint script
 COPY entrypoint.sh /app/entrypoint.sh
-COPY health_wrapper.py /app/health_wrapper.py
 RUN chmod +x /app/entrypoint.sh
 
-# Use health wrapper to run the server with health checks
-CMD ["python", "/app/health_wrapper.py"]
+# Use the streaming MCP server as the main entry point
+ENTRYPOINT ["/app/entrypoint.sh"]

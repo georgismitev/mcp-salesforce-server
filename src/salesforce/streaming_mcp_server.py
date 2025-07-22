@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 MCP Server with Streaming Support using Starlette and FastMCP
+Main entry point for the Docker workflow
 """
 
 from typing import Any, Dict, Optional
@@ -11,6 +12,7 @@ import logging
 import os
 import uuid
 import argparse
+import sys
 
 import httpx
 from simple_salesforce import Salesforce
@@ -107,7 +109,8 @@ async def get_object_fields(arguments: Dict[str, Any]) -> Dict[str, Any]:
     
     try:
         results = sf_client.get_object_fields(object_name)
-        return json.loads(results)  # Convert JSON string to dict if needed
+        # The results are already a Python object, not a JSON string
+        return {"fields": results}
     except Exception as e:
         logger.error(f"Error getting object fields: {e}")
         raise ValueError(f"Error getting object fields: {e}")
@@ -179,28 +182,79 @@ def create_starlette_app(mcp_server: Server, *, debug: bool = False) -> Starlett
         except Exception as e:
             logger.error(f"SSE handler crashed: {e}")
         return Response(status_code=204)  # No Content
+    
+    async def handle_health_check(request: Request) -> Response:
+        """Health check endpoint for Docker container health checks"""
+        # Check if Salesforce connection is active
+        if sf_client.sf is None:
+            return Response(
+                content=json.dumps({"status": "error", "message": "Salesforce connection not established"}),
+                status_code=503,
+                media_type="application/json"
+            )
+        
+        return Response(
+            content=json.dumps({"status": "ok", "service": "mcp-salesforce-server", "timestamp": datetime.now().isoformat()}),
+            status_code=200,
+            media_type="application/json"
+        )
+    
+    async def handle_metrics(request: Request) -> Response:
+        """Metrics endpoint for monitoring in Docker environment"""
+        return Response(
+            content=json.dumps({
+                "service": "mcp-salesforce-server",
+                "status": "active",
+                "timestamp": datetime.now().isoformat(),
+                "salesforce_connected": sf_client.sf is not None,
+                "version": "0.1.8"  # Get this from package version
+            }),
+            status_code=200,
+            media_type="application/json"
+        )
 
     return Starlette(
         debug=debug,
         routes=[
             Route("/sse", endpoint=handle_sse),
+            Route("/health", endpoint=handle_health_check),
+            Route("/metrics", endpoint=handle_metrics),
             Mount("/messages/", app=sse.handle_post_message),
         ],
     )
+
+def setup_app() -> Starlette:
+    """
+    Set up and return the Starlette application for the Salesforce MCP Server.
+    This function can be used both for direct execution and for WSGI/ASGI servers in Docker.
+    """
+    # Get the actual MCP server from the FastMCP wrapper
+    mcp_server = mcp._mcp_server
+    
+    # Bind SSE request handling to MCP server
+    return create_starlette_app(mcp_server, debug=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run Salesforce MCP SSE-based server')
     parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
     parser.add_argument('--port', type=int, default=8080, help='Port to listen on')
+    parser.add_argument('--log-level', default='info', help='Logging level (debug, info, warning, error)')
     args = parser.parse_args()
-
-    # Get the actual MCP server from the FastMCP wrapper
-    mcp_server = mcp._mcp_server
-
-    # Bind SSE request handling to MCP server
-    starlette_app = create_starlette_app(mcp_server, debug=True)
+    
+    # Configure logging level
+    log_level = getattr(logging, args.log_level.upper(), logging.INFO)
+    logging.basicConfig(level=log_level)
+    
+    starlette_app = setup_app()
     
     print(f"Starting Salesforce MCP Server with streaming on http://{args.host}:{args.port}")
     print(f"SSE endpoint available at http://{args.host}:{args.port}/sse")
 
-    uvicorn.run(starlette_app, host=args.host, port=args.port)
+    try:
+        uvicorn.run(starlette_app, host=args.host, port=args.port)
+    except KeyboardInterrupt:
+        print("Server stopped by user")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Server error: {e}")
+        sys.exit(1)

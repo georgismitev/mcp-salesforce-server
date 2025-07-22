@@ -4,6 +4,8 @@ A Model Context Protocol (MCP) server implementation for Salesforce integration,
 
 ## Recent Updates
 
+- **New Streaming Server**: Added SSE-based streaming MCP server as the main entry point for Docker workflow
+- **Health Check Endpoints**: Added /health and /metrics endpoints for Docker health checks
 - **JSON Parsing Error Fix**: Implemented OutputFilter class to properly separate stdout (JSON) from stderr (debug messages)
 - **Debugging Support**: Added debug mode for troubleshooting (`--debug` flag)
 - **Clean Docker Workflow**: Added scripts for clean Docker management
@@ -18,15 +20,33 @@ A Model Context Protocol (MCP) server implementation for Salesforce integration,
 - Execute Tooling API requests
 - Execute Apex REST requests
 - Make direct REST API calls to Salesforce
+- SSE-based streaming server for real-time communication
+- Health check endpoints for container monitoring
 
 ## Docker Setup
 
 This project includes scripts for running the MCP server in a Docker container:
 
+### Using Docker Script
+
 1. **Start the server**:
    ```bash
    ./scripts/run_mcp_server.sh
    ```
+   
+   Additional options:
+   ```bash
+   ./scripts/run_mcp_server.sh --debug --port 8080 --log-level debug
+   ```
+
+### Using Streaming Server Locally
+
+1. **Start the streaming server**:
+   ```bash
+   ./scripts/run_streaming_server.sh --port 8080
+   ```
+
+   Access the SSE endpoint at `http://localhost:8080/sse`
 
 2. **Run in debug mode** (if needed):
    ```bash
@@ -124,6 +144,32 @@ To pass authentication details to the MCP server via Claude, include them in the
     }
   }
 }
+```
+
+## Streaming Server Architecture
+
+This project uses an SSE (Server-Sent Events) based streaming server as the main entry point for Docker deployments. The streaming server offers several advantages over the traditional stdio-based MCP server:
+
+- **Web-based communication**: Uses HTTP and SSE for communication instead of stdio, making it more suitable for web-based clients and Docker environments
+- **Health monitoring**: Provides `/health` and `/metrics` endpoints for monitoring the server's status
+- **Persistent connections**: Maintains persistent connections with clients, allowing for real-time updates
+- **Docker-friendly**: Designed to work seamlessly in containerized environments
+
+### Endpoints
+
+- `/sse`: The main SSE endpoint for MCP protocol communication
+- `/health`: Health check endpoint that returns status 200 if the server is running properly
+- `/metrics`: Provides additional metrics about the server's state
+
+### Environment Variables
+
+The streaming server uses the following environment variables:
+
+- `SALESFORCE_USERNAME`, `SALESFORCE_PASSWORD`, `SALESFORCE_SECURITY_TOKEN`: Salesforce credentials (username-based authentication)
+- `SALESFORCE_ACCESS_TOKEN`, `SALESFORCE_INSTANCE_URL`: Salesforce credentials (token-based authentication)
+- `PORT`: The port the server listens on (default: 8080)
+- `LOG_LEVEL`: Set logging level (default: info, options: debug, info, warning, error)
+- `MCP_DEBUG`: Enable debug logging (default: false)
 
 ## Troubleshooting
 
