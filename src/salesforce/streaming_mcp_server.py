@@ -19,6 +19,7 @@ from mcp.server import Server
 import mcp.types as types
 from starlette.applications import Starlette
 from starlette.requests import Request
+from starlette.responses import Response
 from starlette.routing import Mount, Route
 from mcp.server.sse import SseServerTransport
 import uvicorn
@@ -163,17 +164,21 @@ def create_starlette_app(mcp_server: Server, *, debug: bool = False) -> Starlett
     """Create a Starlette application that can serve the provided mcp server with SSE."""
     sse = SseServerTransport("/messages/")
 
-    async def handle_sse(request: Request) -> None:
-        async with sse.connect_sse(
-                request.scope,
-                request.receive,
-                request._send,
-        ) as (read_stream, write_stream):
-            await mcp_server.run(
-                read_stream,
-                write_stream,
-                mcp_server.create_initialization_options(),
-            )
+    async def handle_sse(request: Request) -> Response:
+        try:
+            async with sse.connect_sse(
+                    request.scope,
+                    request.receive,
+                    request._send,
+            ) as (read_stream, write_stream):
+                await mcp_server.run(
+                    read_stream,
+                    write_stream,
+                    mcp_server.create_initialization_options(),
+                )
+        except Exception as e:
+            logger.error(f"SSE handler crashed: {e}")
+        return Response(status_code=204)  # No Content
 
     return Starlette(
         debug=debug,
