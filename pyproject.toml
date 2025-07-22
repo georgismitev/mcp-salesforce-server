@@ -13,6 +13,7 @@ dependencies = [
     "mcp",
     "simple-salesforce",
     "python-dotenv",
+    "pytest>=8.4.1",
 ]
 license = { text = "MIT" }
 authors = [

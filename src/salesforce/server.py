@@ -13,7 +13,7 @@ import os
 from dotenv import load_dotenv
 
 from simple_salesforce import Salesforce
-from simple_salesforce.exceptions import SalesforceError
+from simple_salesforce import SalesforceError
 
 import mcp.types as types
 from mcp.server import Server, NotificationOptions
@@ -43,7 +43,6 @@ class SalesforceClient:
                     session_id=access_token
                 )
 
-                print(f"Salesforce connection (access token, url) established succesfully.")
                 return True
             
             self.sf = Salesforce(
@@ -52,10 +51,9 @@ class SalesforceClient:
                 security_token=os.getenv('SALESFORCE_SECURITY_TOKEN')
             )
             
-            print(f"Salesforce connection (username, password, token) established succesfully.")
+            # print(f"Salesforce connection (username, password, token) established succesfully.")
             return True
         except Exception as e:
-            print(f"Salesforce connection failed: {str(e)}")
             return False
     
     def get_object_fields(self, object_name: str) -> str:
@@ -95,7 +93,6 @@ load_dotenv()
 # Configure with Salesforce credentials from environment variables
 sf_client = SalesforceClient()
 if not sf_client.connect():
-    print("Failed to initialize Salesforce connection")
     # Optionally exit here if Salesforce is required
     sys.exit(1)
 
@@ -106,6 +103,7 @@ async def handle_list_tools() -> list[types.Tool]:
     List available tools.
     Each tool specifies its arguments using JSON Schema validation.
     """
+    # Return the list of tools
     return [
         types.Tool(
             name="run_soql_query",
@@ -316,7 +314,8 @@ async def handle_list_tools() -> list[types.Tool]:
     ]
 
 @server.call_tool()
-async def handle_call_tool(name: str, arguments: dict[str, str]) -> list[types.TextContent]:
+async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextContent]:
+    # No need to handle prefix stripping as we're using consistent naming
     if name == "run_soql_query":
         query = arguments.get("query")
         if not query:
@@ -470,7 +469,7 @@ async def handle_call_tool(name: str, arguments: dict[str, str]) -> list[types.T
         ]
     raise ValueError(f"Unknown tool: {name}")
 
-# Add prompt capabilities for common data analysis tasks
+
 
 async def run():
     async with mcp.server.stdio.stdio_server() as (read, write):
@@ -480,6 +479,7 @@ async def run():
             InitializationOptions(
                 server_name="salesforce-mcp",
                 server_version="0.1.5",
+                protocol_version="2025-03-26",  # Explicitly set protocol version to match tests
                 capabilities=server.get_capabilities(
                     notification_options=NotificationOptions(),
                     experimental_capabilities={},
