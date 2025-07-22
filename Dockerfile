@@ -17,14 +17,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copy source code
 COPY src/ ./src/
 
-# Create a default .env file
-RUN echo "# Salesforce credentials" > .env && \
-    echo "SALESFORCE_USERNAME=placeholder" >> .env && \
-    echo "SALESFORCE_PASSWORD=placeholder" >> .env && \
-    echo "SALESFORCE_SECURITY_TOKEN=placeholder" >> .env && \
-    echo "SALESFORCE_DOMAIN=login" >> .env && \
-    echo "PORT=8000" >> .env
-
 # Expose the port the MCP server will run on
 EXPOSE 8000
 
