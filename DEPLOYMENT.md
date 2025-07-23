@@ -88,14 +88,15 @@ export REGION=europe-west6
 export PROJECT_ID=$(gcloud config get-value project)
 
 # Deploy directly from your local source
-gcloud run deploy mcp-salesforce-server \
+gcloud run deploy mcp-salesforce-server 
   --source . \
   --platform=managed \
   --region=$REGION \
   --allow-unauthenticated \
-  --port=8000 \
-  --set-env-vars="PYTHONUNBUFFERED=1,MCP_STDIO_ENABLED=true,MCP_DEBUG=false" \
-  --set-secrets="SALESFORCE_USERNAME=salesforce-username:latest,SALESFORCE_PASSWORD=salesforce-password:latest,SALESFORCE_SECURITY_TOKEN=salesforce-token:latest"
+  --port=8080 \
+  --timeout=120 \
+  --set-env-vars="PYTHONUNBUFFERED=1,LOG_LEVEL=info" \
+  --set-secrets="SALESFORCE_USERNAME=salesforce-username:latest,SALESFORCE_PASSWORD=salesforce-password:latest,SALESFORCE_SECURITY_TOKEN=salesforce-token:latest" \
 ```
 
 ### Step 5: Verify Deployment
@@ -128,8 +129,10 @@ Replace `CLOUD_RUN_SERVICE_URL` with the URL you got from the previous step.
 ### Step 7: Monitor and Troubleshoot
 
 ```bash
+# Set default region (convenient for subsequent commands)
+gcloud config set run/region europe-west6
+
 # View logs
-export REGION=europe-west6
 export PROJECT_ID=$(gcloud config get-value project)
 
 gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=mcp-salesforce-server" \
@@ -137,7 +140,17 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
   --format="table(timestamp, severity, textPayload)"
 
 # Check service details
-gcloud run services describe mcp-salesforce-server --region=$REGION
+gcloud run services describe mcp-salesforce-server
+
+# List Cloud Run Services Across All Regions
+gcloud run services list --platform=managed --project=$(gcloud config get-value project) --format="table(location, name)"
+
+# Get the container image currently in use
+gcloud run services describe mcp-salesforce-server \
+    --platform=managed \
+    --region=$(gcloud config get-value run/region) \
+    --project=$(gcloud config get-value project) \
+    --format="value(spec.template.spec.containers[0].image)"
 ```
 
 ### Step 8: Update the Deployment (If Needed)
@@ -155,8 +168,9 @@ gcloud run deploy mcp-salesforce-server \
   --platform=managed \
   --region=$REGION \
   --allow-unauthenticated \
-  --port=8000 \
-  --set-env-vars="PYTHONUNBUFFERED=1,MCP_STDIO_ENABLED=true,MCP_DEBUG=false" \
+  --port=8080 \
+  --timeout=120 \
+  --set-env-vars="PYTHONUNBUFFERED=1,LOG_LEVEL=info" \
   --set-secrets="SALESFORCE_USERNAME=salesforce-username:latest,SALESFORCE_PASSWORD=salesforce-password:latest,SALESFORCE_SECURITY_TOKEN=salesforce-token:latest"
 ```
 
@@ -169,8 +183,25 @@ If you need to delete the service:
 export REGION=europe-west6
 export PROJECT_ID=$(gcloud config get-value project)
 
-# Delete the Cloud Run service
-gcloud run services delete mcp-salesforce-server --region=$REGION
+# Get container image details
+IMAGE_URL=$(gcloud run services describe mcp-salesforce-server \
+  --region=$REGION \
+  --format="value(spec.template.spec.containers[0].image)")
+
+echo "Container image: $IMAGE_URL"
+
+# Delete the container image (CAUTION: This permanently deletes the image)
+gcloud artifacts docker images delete $IMAGE_URL --quiet
+
+# Example of deleting a specific image by digest and its tags
+# gcloud artifacts docker images delete europe-west6-docker.pkg.dev/mcp-salesforce-server/cloud-run-source-deploy/mcp-salesforce-server@sha256:6a...37 --delete-tags
+
+# Delete all unused images for a specific repository (CAUTION: Destructive action)
+# Replace REPOSITORY_PATH with your repository path like europe-west6-docker.pkg.dev/PROJECT_ID/cloud-run-source-deploy
+# gcloud artifacts docker images list REPOSITORY_PATH --format="value(name)" | xargs -I {} gcloud artifacts docker images delete {} --quiet
+
+# List Docker images:
+gcloud artifacts docker images list europe-west6-docker.pkg.dev/$(gcloud config get-value project)/cloud-run-source-deploy
 
 # Delete the secrets (only if no longer needed)
 gcloud secrets delete salesforce-username
@@ -194,3 +225,21 @@ gcloud secrets delete salesforce-token
 5. **Project ID**: Throughout this guide, we use `$(gcloud config get-value project)` to get your current GCP project ID. Make sure you're working in the correct project before running these commands.
 
 This approach gives you a clean, repository-free deployment while still maintaining proper security for your Salesforce credentials using Secret Manager.
+
+# Clear cached GCP images
+
+## Get the images 
+
+```
+gcloud run services describe mcp-salesforce-server \
+  --region=$REGION \
+  --format="value(spec.template.spec.containers[0].image)"
+```
+
+```
+gcloud artifacts docker images delete europe-west6-docker.pkg.dev/mcp-salesforce-server/cloud-run-source-deploy/$(gcloud run services describe mcp-salesforce-server --region=$REGION --format="value(spec.template.spec.containers[0].image)") --delete-tags
+```
+
+```
+gcloud artifacts docker images list europe-west6-docker.pkg.dev/$(gcloud config get-value project)/cloud-run-source-deploy
+```

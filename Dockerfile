@@ -28,6 +28,7 @@ ENV MCP_DEBUG=true
 
 # Copy entrypoint script
 COPY entrypoint.sh /app/entrypoint.sh
+
 RUN chmod +x /app/entrypoint.sh
 
 # Use the streaming MCP server as the main entry point

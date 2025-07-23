@@ -13,7 +13,38 @@ echo "Host: 0.0.0.0"
 echo "Log level: ${LOG_LEVEL:-info}"
 
 # Check if environment variables are set
-if [ -z "$SALESFORCE_USERNAME" ] && [ -z "$SALESFORCE_ACCESS_TOKEN" ]; then
+if [ -z "$SALESFORCE_USERNAME" ]; then
+    echo "INFO: SALESFORCE_USERNAME is not set."
+else
+    echo "INFO: SALESFORCE_USERNAME is set."
+fi
+
+if [ -z "$SALESFORCE_PASSWORD" ]; then
+    echo "INFO: SALESFORCE_PASSWORD is not set."
+else
+    echo "INFO: SALESFORCE_PASSWORD is set."
+fi
+
+if [ -z "$SALESFORCE_SECURITY_TOKEN" ]; then
+    echo "INFO: SALESFORCE_SECURITY_TOKEN is not set."
+else
+    echo "INFO: SALESFORCE_SECURITY_TOKEN is set."
+fi
+
+if [ -z "$SALESFORCE_ACCESS_TOKEN" ]; then
+    echo "INFO: SALESFORCE_ACCESS_TOKEN is not set."
+else
+    echo "INFO: SALESFORCE_ACCESS_TOKEN is set."
+fi
+
+if [ -z "$SALESFORCE_INSTANCE_URL" ]; then
+    echo "INFO: SALESFORCE_INSTANCE_URL is not set."
+else
+    echo "INFO: SALESFORCE_INSTANCE_URL is set."
+fi
+
+# Check if environment variables are set
+if [ -z "$SALESFORCE_USERNAME" ] && [ -z "$SALESFORCE_SECURITY_TOKEN" ]; then
     echo "WARNING: Neither SALESFORCE_USERNAME nor SALESFORCE_ACCESS_TOKEN are set."
     echo "The server will start, but connections to Salesforce will fail."
     echo "Please set either:"
