@@ -1,4 +1,4 @@
-from . import server
+from . import streaming_mcp_server
 import asyncio
 
 def main():
