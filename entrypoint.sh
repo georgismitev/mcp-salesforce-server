@@ -57,10 +57,14 @@ mkdir -p /app/logs
 
 echo "===== Selecting execution mode ====="
 
-# Check if we should run in test login mode
-if [ "${RUN_MODE}" = "test_login" ]; then
-    echo "===== Running Salesforce Login Test ====="
-    # Run the test_sf_login.py script
+# Check which test mode to run
+if [ "${RUN_MODE}" = "test_soap_login" ]; then
+    echo "===== Running Salesforce SOAP Login Test ====="
+    # Run the test_sf_soap_login.py script that tests raw SOAP authentication
+    exec python ./scripts/test_sf_soap_login.py
+elif [ "${RUN_MODE}" = "test_login" ]; then
+    echo "===== Running Salesforce Standard Login Test ====="
+    # Run the test_sf_login.py script that uses simple-salesforce
     exec python ./scripts/test_sf_login.py
 else
     # Regular server mode

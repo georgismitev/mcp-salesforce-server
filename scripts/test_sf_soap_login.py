@@ -103,6 +103,9 @@ def salesforce_soap_login(username, password, security_token, domain="login", ap
                                 headers=login_soap_request_headers)
         
         print(f"Response status code: {response.status_code}")
+        print(f"Response ========")
+        print(response.content)
+        print(f"Response ========")
         
         # Check for successful response
         if response.status_code != 200:
