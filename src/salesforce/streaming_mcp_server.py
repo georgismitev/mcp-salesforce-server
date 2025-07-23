@@ -4,6 +4,22 @@ MCP Server with Streaming Support using Starlette and FastMCP
 Main entry point for the Docker workflow
 """
 
+# Fix module loading issues - define this before any other imports
+import sys
+import os
+import logging.config
+
+# Set environment variable to indicate that we're in the main module
+# This will help prevent duplicate initialization
+os.environ["MCP_SERVER_ALREADY_RUNNING"] = "1"
+
+# Silence the RuntimeWarning about module loading
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="runpy")
+
+# Dedicated flag for tracking initialization
+_is_initialized = False
+
 from typing import Any, Dict, Optional
 from datetime import datetime
 import json
@@ -33,21 +49,40 @@ from zoneinfo import ZoneInfo
 # Load environment variables first to ensure they're available when needed
 load_dotenv()
 
-# Configure logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+# Configure logging once - with deduplicated setup
+def setup_logging(log_level=logging.INFO):
+    """Set up logging with deduplication controls"""
+    # Clear all existing handlers from the root logger to avoid duplicates
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+        
+    # Configure root logger
+    logging.basicConfig(
+        level=log_level,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        stream=sys.stdout
+    )
+    
+    # Get our module logger
+    logger = logging.getLogger(__name__)
+    
+    # Clear any existing handlers to avoid duplicates
+    if logger.hasHandlers():
+        logger.handlers.clear()
+    
+    # Ensure we're using the correct level
+    logger.setLevel(log_level)
+    
+    return logger
 
-# Clear old handlers to avoid duplicate logs
-if logger.hasHandlers():
-    logger.handlers.clear()
-
-handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+# Set up initial logging
+logger = setup_logging(logging.INFO)
 
 # Initialize FastMCP server for Salesforce tools with SSE support
 mcp = FastMCP("salesforce-ss")
+
+# Module-level variable to track if we've already initialized the client
+__sf_client = None
 
 # Salesforce Client
 class SalesforceClient:
@@ -60,6 +95,13 @@ class SalesforceClient:
         
     def _initialize(self):
         """Initialize Salesforce connection using environment variables"""
+        # If already initialized, don't re-initialize
+        if self.sf is not None:
+            return
+        
+        # Use a flag file to prevent duplicate logging
+        connection_logged = os.environ.get("SALESFORCE_CONNECTION_LOGGED") == "1"
+            
         try:
             access_token = os.getenv('SALESFORCE_ACCESS_TOKEN')
             instance_url = os.getenv('SALESFORCE_INSTANCE_URL')
@@ -75,7 +117,12 @@ class SalesforceClient:
                     password=os.getenv('SALESFORCE_PASSWORD'),
                     security_token=os.getenv('SALESFORCE_SECURITY_TOKEN')
                 )
-            logger.info("Connected to Salesforce successfully")
+            
+            # Only log the first time, and only if we're in the main process
+            # Set the environment variable to mark that we've logged
+            if not connection_logged and os.environ.get("MCP_SERVER_ALREADY_RUNNING") == "1":
+                logger.info("Connected to Salesforce successfully")
+                os.environ["SALESFORCE_CONNECTION_LOGGED"] = "1"
         except Exception as e:
             now_cet = datetime.now(ZoneInfo("Europe/Paris")).strftime("%Y-%m-%d %H:%M:%S")
             logger.error(f"[{now_cet} CET] Salesforce connection failed: {e}")
@@ -103,8 +150,15 @@ class SalesforceClient:
             
         return self.sobjects_cache[object_name]
 
-# Initialize Salesforce client
-sf_client = SalesforceClient()
+# Initialize Salesforce client (only once)
+def get_salesforce_client():
+    """Get or create the Salesforce client instance"""
+    global __sf_client
+    if __sf_client is None:
+        __sf_client = SalesforceClient()
+    return __sf_client
+
+sf_client = get_salesforce_client()
 
 @mcp.tool()
 async def get_object_fields(arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -250,6 +304,12 @@ def setup_app() -> Starlette:
 
 def main():
     """Main entry point for the application"""
+    global _is_initialized, logger
+    
+    # Avoid double execution
+    if _is_initialized:
+        return
+    
     parser = argparse.ArgumentParser(description='Run Salesforce MCP SSE-based server')
     parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
     parser.add_argument('--port', type=int, default=8080, help='Port to listen on')
@@ -258,20 +318,54 @@ def main():
     
     # Configure logging level
     log_level = getattr(logging, args.log_level.upper(), logging.INFO)
-    logger.setLevel(log_level)
     
-    # Also set root logger level
-    logging.getLogger().setLevel(log_level)
+    # Reset logging completely with the specified log level
+    logger = setup_logging(log_level)
+    
+    # Mark as initialized to prevent duplicate log messages
+    _is_initialized = True
     
     starlette_app = setup_app()
     
-    print(f"Starting Salesforce MCP Server with streaming on http://{args.host}:{args.port}")
-    print(f"SSE endpoint available at http://{args.host}:{args.port}/sse")
+    # Only log startup messages if we're the main module
+    if os.environ.get("MCP_SERVER_ALREADY_RUNNING") == "1":
+        logger.info(f"Starting Salesforce MCP Server with streaming on http://{args.host}:{args.port}")
+        logger.info(f"SSE endpoint available at http://{args.host}:{args.port}/sse")
 
+    # Suppress Uvicorn's default logging
+    uvicorn_log_config = {
+        "version": 1,
+        "disable_existing_loggers": True,
+        "formatters": {
+            "default": {
+                "format": "%(asctime)s - %(levelname)s - %(message)s",
+            }
+        },
+        "handlers": {
+            "default": {
+                "formatter": "default",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout",
+            }
+        },
+        "loggers": {
+            "uvicorn": {"handlers": ["default"], "level": "WARNING", "propagate": False},
+            "uvicorn.error": {"handlers": ["default"], "level": "ERROR", "propagate": False},
+            "uvicorn.access": {"level": "WARNING", "propagate": False},
+        }
+    }
+    
     try:
-        uvicorn.run(starlette_app, host=args.host, port=args.port)
+        # Run with minimal logging from uvicorn
+        uvicorn.run(
+            starlette_app, 
+            host=args.host, 
+            port=args.port,
+            log_config=uvicorn_log_config,
+            access_log=False
+        )
     except KeyboardInterrupt:
-        print("Server stopped by user")
+        logger.info("Server stopped by user")
         sys.exit(0)
     except Exception as e:
         logger.error(f"Server error: {e}")

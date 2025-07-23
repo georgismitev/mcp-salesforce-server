@@ -61,6 +61,12 @@ echo "Health check: http://0.0.0.0:${PORT:-8080}/health"
 echo "Metrics: http://0.0.0.0:${PORT:-8080}/metrics"
 echo "===== Starting server ====="
 
+# Python settings to prevent duplicate logs and improve module loading
+export PYTHONUNBUFFERED=1  # Disable output buffering
+export PYTHONDONTWRITEBYTECODE=1  # Don't write .pyc files
+export PYTHONPATH=/app
+export PYTHONIOENCODING=utf-8
+
 # Run the streaming server directly
 # Using exec replaces the current process with the Python process
 # so that signals like SIGTERM are properly passed to the Python process
