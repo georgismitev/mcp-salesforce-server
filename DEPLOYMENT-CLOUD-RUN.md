@@ -1,16 +1,18 @@
-# Deploying MCP Salesforce Server to Google Cloud Platform
+# Deploying MCP Salesforce Server to Google Cloud Run
 
-This guide provides step-by-step instructions for deploying your MCP Salesforce Server to Google Cloud Platform (GCP) using Cloud Run in the europe-west6 (Zurich) region.
+This guide provides step-by-step instructions for deploying your MCP Salesforce Server to Google Cloud Platform (GCP) using Cloud Run (serverless).
 
-## Prerequisites
+## Deploy to Cloud Run (Serverless)
+
+### Prerequisites
 
 - A Google Cloud Platform account with billing enabled
 - gcloud CLI installed on your local machine
 - Docker installed locally (optional)
 
-## Deployment Steps
+### Deployment Steps
 
-### Step 1: Install and Configure Google Cloud SDK
+#### Step 1: Install and Configure Google Cloud SDK
 
 ```bash
 # Install gcloud CLI if not already installed
@@ -33,7 +35,7 @@ echo "Your project ID is: $PROJECT_ID"
 gcloud services enable cloudbuild.googleapis.com run.googleapis.com secretmanager.googleapis.com appengine.googleapis.com
 ```
 
-### Step 2: Create App Engine Application
+#### Step 2: Create App Engine Application
 
 Cloud Run requires an App Engine application to be set up in your project. This is required even if you don't plan to use App Engine directly.
 
@@ -45,7 +47,7 @@ gcloud app create --region=europe-west
 # The command above will create the App Engine application in the closest available region.
 ```
 
-### Step 3: Create Secrets in Secret Manager
+#### Step 3: Create Secrets in Secret Manager
 
 ```bash
 # Create secrets for Salesforce credentials
@@ -80,7 +82,7 @@ gcloud secrets add-iam-policy-binding salesforce-token \
   --role="roles/secretmanager.secretAccessor"
 ```
 
-### Step 4: Deploy to Cloud Run Directly from Source
+#### Step 4: Deploy to Cloud Run Directly from Source
 
 ```bash
 # Set the region
@@ -99,7 +101,7 @@ gcloud run deploy mcp-salesforce-server
   --set-secrets="SALESFORCE_USERNAME=salesforce-username:latest,SALESFORCE_PASSWORD=salesforce-password:latest,SALESFORCE_SECURITY_TOKEN=salesforce-token:latest" \
 ```
 
-### Step 5: Verify Deployment
+#### Step 5: Verify Deployment
 
 ```bash
 # Get the deployed service URL
@@ -109,7 +111,7 @@ gcloud run services describe mcp-salesforce-server \
   --format="value(status.url)"
 ```
 
-### Step 6: Set Up Claude to Use Your Deployed MCP Server
+#### Step 6: Set Up Claude to Use Your Deployed MCP Server
 
 Update your Claude configuration file with the following:
 
@@ -126,7 +128,7 @@ Update your Claude configuration file with the following:
 
 Replace `CLOUD_RUN_SERVICE_URL` with the URL you got from the previous step.
 
-### Step 7: Monitor and Troubleshoot
+#### Step 7: Monitor and Troubleshoot
 
 ```bash
 # Set default region (convenient for subsequent commands)
@@ -153,7 +155,7 @@ gcloud run services describe mcp-salesforce-server \
     --format="value(spec.template.spec.containers[0].image)"
 ```
 
-### Step 8: Update the Deployment (If Needed)
+#### Step 8: Update the Deployment (If Needed)
 
 If you make changes to your code:
 
@@ -174,7 +176,7 @@ gcloud run deploy mcp-salesforce-server \
   --set-secrets="SALESFORCE_USERNAME=salesforce-username:latest,SALESFORCE_PASSWORD=salesforce-password:latest,SALESFORCE_SECURITY_TOKEN=salesforce-token:latest"
 ```
 
-### Step 9: Cleanup (Optional)
+#### Step 9: Cleanup (Optional)
 
 If you need to delete the service:
 
@@ -195,51 +197,33 @@ gcloud artifacts docker images delete $IMAGE_URL --quiet
 
 # Example of deleting a specific image by digest and its tags
 # gcloud artifacts docker images delete europe-west6-docker.pkg.dev/mcp-salesforce-server/cloud-run-source-deploy/mcp-salesforce-server@sha256:6a...37 --delete-tags
-
-# Delete all unused images for a specific repository (CAUTION: Destructive action)
-# Replace REPOSITORY_PATH with your repository path like europe-west6-docker.pkg.dev/PROJECT_ID/cloud-run-source-deploy
-# gcloud artifacts docker images list REPOSITORY_PATH --format="value(name)" | xargs -I {} gcloud artifacts docker images delete {} --quiet
-
-# List Docker images:
-gcloud artifacts docker images list europe-west6-docker.pkg.dev/$(gcloud config get-value project)/cloud-run-source-deploy
-
-# Delete the secrets (only if no longer needed)
-gcloud secrets delete salesforce-username
-gcloud secrets delete salesforce-password
-gcloud secrets delete salesforce-token
 ```
 
-## Important Notes
+## Known Issues with Cloud Run Deployment
 
-1. **Billing**: Cloud Run follows a pay-as-you-go model. Costs are based on:
-   - Container instance time (measured in 100ms increments)
-   - Number of requests
-   - Memory and CPU allocation
+When deploying to Cloud Run, there are some known issues with Salesforce authentication:
 
-2. **Secrets Security**: Secrets are securely stored in Secret Manager and mounted as environment variables. They're never visible in logs or configuration.
+1. **SOAP Authentication Failures**: 
+   - Authentication using the simple-salesforce library may fail in Cloud Run environments
+   - The same code works in VM environments, suggesting an environment-specific issue
 
-3. **Cold Starts**: The first request after inactivity may experience a slight delay (cold start). This is normal for serverless platforms.
+2. **Potential Root Causes**:
+   - Network constraints in serverless environments
+   - Differences in how HTTPS requests are handled, particularly for older SOAP endpoints
+   - Ephemeral IP addresses used in Cloud Run
 
-4. **Connection**: Make sure Claude is configured to communicate with the MCP server via HTTP instead of stdio since the Cloud Run deployment uses HTTP.
+3. **Workarounds**:
+   - Deploy to a VM instead (see DEPLOYMENT-VM.md)
+   - Test with both simple-salesforce and raw SOAP implementations to isolate the issue
 
-5. **Project ID**: Throughout this guide, we use `$(gcloud config get-value project)` to get your current GCP project ID. Make sure you're working in the correct project before running these commands.
+## Testing Cloud Run vs. VM Deployments
 
-This approach gives you a clean, repository-free deployment while still maintaining proper security for your Salesforce credentials using Secret Manager.
+For troubleshooting authentication issues:
 
-# Clear cached GCP images
+1. Set up the same server in both environments (Cloud Run and VM)
+2. Use identical code, credentials, and configurations
+3. Test authentication in both environments
+4. Compare logs and responses
+5. If authentication succeeds in VM but fails in Cloud Run, the issue is likely environment-specific
 
-## Get the images 
-
-```
-gcloud run services describe mcp-salesforce-server \
-  --region=$REGION \
-  --format="value(spec.template.spec.containers[0].image)"
-```
-
-```
-gcloud artifacts docker images delete europe-west6-docker.pkg.dev/mcp-salesforce-server/cloud-run-source-deploy/$(gcloud run services describe mcp-salesforce-server --region=$REGION --format="value(spec.template.spec.containers[0].image)") --delete-tags
-```
-
-```
-gcloud artifacts docker images list europe-west6-docker.pkg.dev/$(gcloud config get-value project)/cloud-run-source-deploy
-```
+For more details on VM deployment, see DEPLOYMENT-VM.md.
