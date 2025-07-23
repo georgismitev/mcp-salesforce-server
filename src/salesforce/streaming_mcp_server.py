@@ -61,20 +61,21 @@ class SalesforceClient:
     def _initialize(self):
         """Initialize Salesforce connection using environment variables"""
         try:
-            access_token = os.getenv('SALESFORCE_ACCESS_TOKEN')
-            instance_url = os.getenv('SALESFORCE_INSTANCE_URL')
+            # Try to make a diagnostic HTTP request first using httpx (already imported)
+            try:
+                with httpx.Client(timeout=5.0) as client:
+                    response = client.get("https://login.salesforce.com/")
+                logger.info(f"CURL: Salesforce connectivity check: Status {response.status_code}")
+                if not response.is_success:
+                    logger.warning(f"CURL: HTTP diagnostic response: {response.text[:200]}")
+            except Exception as http_err:
+                logger.warning(f"CURL: Diagnostic HTTP request failed: {http_err}")
             
-            if access_token and instance_url:
-                self.sf = Salesforce(
-                    instance_url=instance_url,
-                    session_id=access_token
-                )
-            else:
-                self.sf = Salesforce(
-                    username=os.getenv('SALESFORCE_USERNAME'),
-                    password=os.getenv('SALESFORCE_PASSWORD'),
-                    security_token=os.getenv('SALESFORCE_SECURITY_TOKEN')
-                )
+            self.sf = Salesforce(
+                username=os.getenv('SALESFORCE_USERNAME'),
+                password=os.getenv('SALESFORCE_PASSWORD'),
+                security_token=os.getenv('SALESFORCE_SECURITY_TOKEN')
+            )
             logger.info("Connected to Salesforce successfully")
         except Exception as e:
             now_cet = datetime.now(ZoneInfo("Europe/Paris")).strftime("%Y-%m-%d %H:%M:%S")
