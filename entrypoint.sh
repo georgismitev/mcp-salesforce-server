@@ -65,10 +65,27 @@ echo "Health check: http://0.0.0.0:${PORT:-8080}/health"
 echo "Metrics: http://0.0.0.0:${PORT:-8080}/metrics"
 echo "===== Starting server ====="
 
+# Set the debug flags based on environment variables
+if [ "${DEBUG_SALESFORCE:-false}" = "true" ]; then
+  SF_LOG_LEVEL="debug"
+  echo "Salesforce debug logging enabled"
+else
+  SF_LOG_LEVEL="${SF_LOG_LEVEL:-$LOG_LEVEL}"
+fi
+
+if [ "${DEBUG_HTTP:-false}" = "true" ]; then
+  HTTP_LOG_LEVEL="debug"
+  echo "HTTP debug logging enabled"
+else
+  HTTP_LOG_LEVEL="${HTTP_LOG_LEVEL:-$LOG_LEVEL}"
+fi
+
 # Run the streaming server directly
 # Using exec replaces the current process with the Python process
 # so that signals like SIGTERM are properly passed to the Python process
 exec python -m src.salesforce.streaming_mcp_server \
   --host 0.0.0.0 \
   --port ${PORT:-8080} \
-  --log-level ${LOG_LEVEL:-info}
+  --log-level ${LOG_LEVEL:-info} \
+  --sf-log-level ${SF_LOG_LEVEL:-info} \
+  --http-log-level ${HTTP_LOG_LEVEL:-info}

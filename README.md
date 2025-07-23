@@ -38,6 +38,18 @@ This project includes scripts for running the MCP server in a Docker container:
    ```bash
    ./scripts/run_mcp_server.sh --debug --port 8080 --log-level debug
    ```
+   
+   Advanced debugging options:
+   ```bash
+   # Enable detailed logging for Salesforce authentication and API calls
+   DEBUG_SALESFORCE=true ./scripts/run_mcp_server.sh
+   
+   # Enable detailed logging for HTTP requests/responses
+   DEBUG_HTTP=true ./scripts/run_mcp_server.sh
+   
+   # Enable all debugging
+   DEBUG_SALESFORCE=true DEBUG_HTTP=true LOG_LEVEL=debug ./scripts/run_mcp_server.sh
+   ```
 
 ### Using Streaming Server Locally
 
@@ -187,6 +199,57 @@ Common fixes:
    ```bash
    ./scripts/run_mcp_server.sh --debug
    ```
+
+## Troubleshooting
+
+### Salesforce Authentication Issues
+
+If you're experiencing authentication problems with Salesforce, enable detailed logging:
+
+```bash
+DEBUG_SALESFORCE=true LOG_LEVEL=debug ./scripts/run_mcp_server.sh
+```
+
+This will output detailed information about:
+- Authentication method being used
+- API versions
+- Session details
+- Detailed error messages with stack traces
+- Network connectivity issues
+
+### Common Error Messages
+
+1. **Invalid Login**
+   ```
+   INVALID_LOGIN: Invalid username, password, security token; or user locked out.
+   ```
+   - Verify your username, password and security token are correct
+   - Check if your account is locked due to too many failed login attempts
+   - Confirm IP address is allowed (check Salesforce Setup > Network Access)
+
+2. **Network Connectivity Issues**
+   ```
+   Connection refused or connect timeout
+   ```
+   - Check network connectivity to Salesforce
+   - Verify firewall rules allow outbound connections
+
+3. **SSL Certificate Issues**
+   ```
+   SSLError: Certificate verification failed
+   ```
+   - Check your SSL certificates
+   - May need to update trusted certificate authorities
+
+### Viewing HTTP Request/Response Details
+
+To see the exact HTTP requests being sent to Salesforce and their responses:
+
+```bash
+DEBUG_HTTP=true ./scripts/run_mcp_server.sh
+```
+
+This will show complete request and response headers, bodies, and timing information.
 
 ## Clean Start
 

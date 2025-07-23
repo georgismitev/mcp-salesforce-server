@@ -41,10 +41,16 @@ logger.setLevel(logging.INFO)
 if logger.hasHandlers():
     logger.handlers.clear()
 
+# Create a common handler and formatter for all loggers
 handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+
+# Configure simple-salesforce logging (set to DEBUG for most verbose output)
+sf_logger = logging.getLogger('simple_salesforce')
+sf_logger.setLevel(logging.DEBUG)
+sf_logger.addHandler(handler)
 
 # Initialize FastMCP server for Salesforce tools with SSE support
 mcp = FastMCP("salesforce-ss")
@@ -65,20 +71,42 @@ class SalesforceClient:
             instance_url = os.getenv('SALESFORCE_INSTANCE_URL')
             
             if access_token and instance_url:
+                sf_logger.info(f"Using session authentication with instance URL: {instance_url}")
+                
+                # Add verbose debug logging for session auth
+                sf_logger.debug(f"Session ID length: {len(access_token) if access_token else 0} characters")
+                sf_logger.debug(f"Instance URL: {instance_url}")
+                
                 self.sf = Salesforce(
                     instance_url=instance_url,
                     session_id=access_token
                 )
             else:
+                username = os.getenv('SALESFORCE_USERNAME')
+                password = os.getenv('SALESFORCE_PASSWORD')
+                security_token = os.getenv('SALESFORCE_SECURITY_TOKEN')
+                
+                # Add verbose debug logging for password auth
+                sf_logger.info(f"Using password authentication for user: {username}")
+                sf_logger.debug(f"Username: {username}")
+                sf_logger.debug(f"Password length: {len(password) if password else 0} characters")
+                sf_logger.debug(f"Security token length: {len(security_token) if security_token else 0} characters")
+                
                 self.sf = Salesforce(
                     username=os.getenv('SALESFORCE_USERNAME'),
                     password=os.getenv('SALESFORCE_PASSWORD'),
                     security_token=os.getenv('SALESFORCE_SECURITY_TOKEN')
                 )
-            logger.info("Connected to Salesforce successfully")
+            sf_logger.info("Connected to Salesforce successfully")
         except Exception as e:
             now_cet = datetime.now(ZoneInfo("Europe/Paris")).strftime("%Y-%m-%d %H:%M:%S")
-            logger.error(f"[{now_cet} CET] Salesforce connection failed: {e}")
+            sf_logger.error(f"[{now_cet} CET] Salesforce connection failed: {e}")
+            
+            # Add more detailed exception analysis
+            import traceback
+            sf_logger.error(f"Exception type: {type(e).__name__}")
+            sf_logger.error(f"Exception traceback:\n{traceback.format_exc()}")
+            
             self.sf = None
     
     def get_object_fields(self, object_name):
@@ -253,7 +281,12 @@ def main():
     parser = argparse.ArgumentParser(description='Run Salesforce MCP SSE-based server')
     parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
     parser.add_argument('--port', type=int, default=8080, help='Port to listen on')
-    parser.add_argument('--log-level', default='info', help='Logging level (debug, info, warning, error)')
+    parser.add_argument('--log-level', default='info', 
+                       help='Logging level (debug, info, warning, error)')
+    parser.add_argument('--sf-log-level', default=None, 
+                       help='Simple-Salesforce logging level (debug, info, warning, error). When not provided, uses --log-level.')
+    parser.add_argument('--http-log-level', default=None,
+                       help='HTTP libraries logging level (debug, info, warning, error). When not provided, uses --log-level.')
     args = parser.parse_args()
     
     # Configure logging level
@@ -262,6 +295,12 @@ def main():
     
     # Also set root logger level
     logging.getLogger().setLevel(log_level)
+    
+    # Configure salesforce logging level
+    sf_log_level = getattr(logging, args.sf_log_level.upper(), log_level) if args.sf_log_level else log_level
+    logging.getLogger('simple_salesforce').setLevel(sf_log_level)
+    
+    logger.info(f"Simple-Salesforce log level: {logging.getLevelName(sf_log_level)}")
     
     starlette_app = setup_app()
     
