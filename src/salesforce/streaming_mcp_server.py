@@ -73,7 +73,8 @@ class SalesforceClient:
                 self.sf = Salesforce(
                     username=os.getenv('SALESFORCE_USERNAME'),
                     password=os.getenv('SALESFORCE_PASSWORD'),
-                    security_token=os.getenv('SALESFORCE_SECURITY_TOKEN')
+                    security_token=os.getenv('SALESFORCE_SECURITY_TOKEN'),
+                    instance_url="energy-business-2502.my.salesforce.com"
                 )
             logger.info("Connected to Salesforce successfully")
         except Exception as e:
