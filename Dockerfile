@@ -12,7 +12,9 @@ RUN apk add --no-cache gcc musl-dev python3-dev
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -e .
+    pip install --no-cache-dir uv && \
+    uv pip install --no-cache-dir -e . && \
+    pip install --no-cache-dir git+https://github.com/simple-salesforce/simple-salesforce.git
 
 # Copy source code
 COPY src/ ./src/

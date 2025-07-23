@@ -15,7 +15,7 @@ dependencies = [
     "pytest>=8.4.1",
     "uvicorn",
     "starlette",
-    "httpx"
+    "httpx",
 ]
 license = { text = "MIT" }
 authors = [
@@ -30,3 +30,6 @@ salesforce = "src.salesforce:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
+
+[tool.uv.sources]
+simple-salesforce = { git = "https://github.com/simple-salesforce/simple-salesforce.git" }

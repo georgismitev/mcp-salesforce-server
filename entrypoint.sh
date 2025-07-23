@@ -12,6 +12,10 @@ echo "Port: ${PORT:-8080}"
 echo "Host: 0.0.0.0"
 echo "Log level: ${LOG_LEVEL:-info}"
 
+# Check simple-salesforce version
+echo "===== Checking simple-salesforce version ====="
+python -c "import simple_salesforce; print(f'simple-salesforce version: {getattr(simple_salesforce, \"__version__\", \"unknown\")}')"
+
 # Check if environment variables are set
 if [ -z "$SALESFORCE_USERNAME" ]; then
     echo "INFO: SALESFORCE_USERNAME is not set."

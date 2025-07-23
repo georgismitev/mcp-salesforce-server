@@ -348,18 +348,24 @@ name = "mcp-salesforce-connector"
 version = "0.1.8"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx" },
     { name = "mcp" },
     { name = "pytest" },
     { name = "python-dotenv" },
     { name = "simple-salesforce" },
+    { name = "starlette" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "httpx" },
     { name = "mcp" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "python-dotenv" },
-    { name = "simple-salesforce" },
+    { name = "simple-salesforce", git = "https://github.com/simple-salesforce/simple-salesforce.git" },
+    { name = "starlette" },
+    { name = "uvicorn" },
 ]
 
 [[package]]
@@ -573,17 +579,13 @@ wheels = [
 [[package]]
 name = "simple-salesforce"
 version = "1.12.6"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/simple-salesforce/simple-salesforce.git#b916e0f8f64d9e0d5d9c1579925f1ae85c96f281" }
 dependencies = [
     { name = "more-itertools" },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "requests" },
     { name = "typing-extensions" },
     { name = "zeep" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/13/a7/22d3992b8413cb775191a2f7af8b193cdaa9d244bf1613a2affeb26bc9f3/simple-salesforce-1.12.6.tar.gz", hash = "sha256:77590606c781905f6b75430562951dd2b062438da7f55fca2b61e4cde31df15b", size = 140673, upload-time = "2024-04-15T16:20:56.366Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/7d/b3/4c694f266760c0574159654ad1a1f7eb682584d9a3b9552ec24a38f73879/simple_salesforce-1.12.6-py2.py3-none-any.whl", hash = "sha256:66c74bee88d09ace46e4fc9c2f6b47c0d012817a764f70a5455d6dc2c7ed635c", size = 132151, upload-time = "2024-04-15T16:20:54.478Z" },
 ]
 
 [[package]]
