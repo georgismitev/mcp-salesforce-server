@@ -27,24 +27,27 @@ from mcp.server.sse import SseServerTransport
 import uvicorn
 from dotenv import load_dotenv
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
-handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
+# Load environment variables first to ensure they're available when needed
+load_dotenv()
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Clear old handlers to avoid duplicate logs
 if logger.hasHandlers():
     logger.handlers.clear()
 
+handler = logging.StreamHandler(sys.stdout)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 # Initialize FastMCP server for Salesforce tools with SSE support
 mcp = FastMCP("salesforce-ss")
-
-load_dotenv()
 
 # Salesforce Client
 class SalesforceClient:
@@ -67,12 +70,6 @@ class SalesforceClient:
                     session_id=access_token
                 )
             else:
-                logger.info(f"[ENV CHECK] SALESFORCE_USERNAME = {os.getenv('SALESFORCE_USERNAME')}")
-                logger.info(f"[ENV CHECK] SALESFORCE_PASSWORD start = {os.getenv('SALESFORCE_PASSWORD')[:3]}")
-                logger.info(f"[ENV CHECK] SALESFORCE_PASSWORD end = {os.getenv('SALESFORCE_PASSWORD')[-3:]}")
-                logger.info(f"[ENV CHECK] SALESFORCE_SECURITY_TOKEN start = {os.getenv('SALESFORCE_SECURITY_TOKEN')[:3]}")
-                logger.info(f"[ENV CHECK] SALESFORCE_SECURITY_TOKEN end = {os.getenv('SALESFORCE_SECURITY_TOKEN')[-3:]}")
-                
                 self.sf = Salesforce(
                     username=os.getenv('SALESFORCE_USERNAME'),
                     password=os.getenv('SALESFORCE_PASSWORD'),
@@ -80,7 +77,8 @@ class SalesforceClient:
                 )
             logger.info("Connected to Salesforce successfully")
         except Exception as e:
-            logger.error(f"Salesforce connection failed again: {e}")
+            now_cet = datetime.now(ZoneInfo("Europe/Paris")).strftime("%Y-%m-%d %H:%M:%S")
+            logger.error(f"[{now_cet} CET] Salesforce connection failed: {e}")
             self.sf = None
     
     def get_object_fields(self, object_name):
@@ -250,7 +248,8 @@ def setup_app() -> Starlette:
     # Bind SSE request handling to MCP server
     return create_starlette_app(mcp_server, debug=True)
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for the application"""
     parser = argparse.ArgumentParser(description='Run Salesforce MCP SSE-based server')
     parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
     parser.add_argument('--port', type=int, default=8080, help='Port to listen on')
@@ -259,7 +258,10 @@ if __name__ == "__main__":
     
     # Configure logging level
     log_level = getattr(logging, args.log_level.upper(), logging.INFO)
-    logging.basicConfig(level=log_level)
+    logger.setLevel(log_level)
+    
+    # Also set root logger level
+    logging.getLogger().setLevel(log_level)
     
     starlette_app = setup_app()
     
@@ -274,3 +276,6 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Server error: {e}")
         sys.exit(1)
+
+if __name__ == "__main__":
+    main()
