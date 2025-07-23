@@ -55,16 +55,26 @@ fi
 # Create a log directory if it doesn't exist
 mkdir -p /app/logs
 
-echo "===== Server endpoints ====="
-echo "SSE endpoint: http://0.0.0.0:${PORT:-8080}/sse"
-echo "Health check: http://0.0.0.0:${PORT:-8080}/health"
-echo "Metrics: http://0.0.0.0:${PORT:-8080}/metrics"
-echo "===== Starting server ====="
+echo "===== Selecting execution mode ====="
 
-# Run the streaming server directly
-# Using exec replaces the current process with the Python process
-# so that signals like SIGTERM are properly passed to the Python process
-exec python -m src.salesforce.streaming_mcp_server \
-  --host 0.0.0.0 \
-  --port ${PORT:-8080} \
-  --log-level ${LOG_LEVEL:-info}
+# Check if we should run in test login mode
+if [ "${RUN_MODE}" = "test_login" ]; then
+    echo "===== Running Salesforce Login Test ====="
+    # Run the test_sf_login.py script
+    exec python ./scripts/test_sf_login.py
+else
+    # Regular server mode
+    echo "===== Server endpoints ====="
+    echo "SSE endpoint: http://0.0.0.0:${PORT:-8080}/sse"
+    echo "Health check: http://0.0.0.0:${PORT:-8080}/health"
+    echo "Metrics: http://0.0.0.0:${PORT:-8080}/metrics"
+    echo "===== Starting server ====="
+
+    # Run the streaming server directly
+    # Using exec replaces the current process with the Python process
+    # so that signals like SIGTERM are properly passed to the Python process
+    exec python -m src.salesforce.streaming_mcp_server \
+      --host 0.0.0.0 \
+      --port ${PORT:-8080} \
+      --log-level ${LOG_LEVEL:-info}
+fi

@@ -132,13 +132,27 @@ def test_salesforce_login():
 
 def main():
     """Main function to run the test"""
+    # Run the test
     success = test_salesforce_login()
     
+    # Create a clear success/failure message that will be easily visible in logs
     if success:
-        logger.info("\n=== TEST SUCCESSFUL ===")
+        logger.info("\n")
+        logger.info("========================================")
+        logger.info("=== SALESFORCE LOGIN TEST SUCCESSFUL ===")
+        logger.info("========================================")
+        logger.info("The Salesforce authentication is working correctly.")
+        logger.info("You can now use this configuration with your MCP server.")
+        logger.info("\n")
         sys.exit(0)
     else:
-        logger.error("\n=== TEST FAILED ===")
+        logger.error("\n")
+        logger.error("======================================")
+        logger.error("=== SALESFORCE LOGIN TEST FAILED ===")
+        logger.error("======================================")
+        logger.error("Please check your credentials and network connectivity.")
+        logger.error("See the error details above for more information.")
+        logger.error("\n")
         sys.exit(1)
 
 if __name__ == "__main__":

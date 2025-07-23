@@ -14,8 +14,12 @@ RUN apk add --no-cache gcc musl-dev python3-dev
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -e .
 
-# Copy source code
+# Copy source code and scripts
 COPY src/ ./src/
+COPY scripts/ ./scripts/
+
+# Ensure scripts are executable
+RUN chmod +x ./scripts/*.py ./scripts/*.sh 2>/dev/null || true
 
 # Expose the port the MCP server will run on
 EXPOSE 8080
