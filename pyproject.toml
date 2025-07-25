@@ -15,7 +15,8 @@ dependencies = [
     "pytest>=8.4.1",
     "uvicorn",
     "starlette",
-    "httpx"
+    "httpx",
+    "fastmcp>=2.10.6",
 ]
 license = { text = "MIT" }
 authors = [
