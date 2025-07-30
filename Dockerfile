@@ -8,7 +8,9 @@ COPY uv.lock .
 COPY README.md ./README.md
 
 # Install necessary build dependencies
-RUN apk add --no-cache gcc musl-dev python3-dev
+# RUN apk add --no-cache gcc musl-dev python3-dev
+RUN apk add --no-cache gcc musl-dev python3-dev ca-certificates
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
