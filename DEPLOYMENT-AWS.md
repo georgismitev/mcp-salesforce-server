@@ -8,7 +8,7 @@ This document summarizes the IAM roles, deployment steps, and best practices for
 - **Purpose:**
   - Allows AWS App Runner to pull (read) container images from your private Amazon ECR repository.
 - **Type:**
-  - IAM Role (named `AppRunnerECRAccessRole` or `service-role/AppRunnerECRAccessRole`)
+  - IAM Role (named `AppRunnerECRAccessRole`)
 - **Trust Relationship:**
   - Trusted entity: `build.apprunner.amazonaws.com`
 - **Permissions:**
